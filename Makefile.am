@@ -75,7 +75,7 @@ noinst_HEADERS = \
 	src/x86/ffitarget.h src/x86/internal.h src/x86/internal64.h src/x86/asmnames.h \
 	src/xtensa/ffitarget.h						\
 	src/dlmalloc.c								\
-	src/k1c/ffitarget.h
+	src/kvx/ffitarget.h
 
 EXTRA_libffi_la_SOURCES = src/aarch64/ffi.c src/aarch64/sysv.S \
 	src/aarch64/win64_armasm.S src/alpha/ffi.c src/alpha/osf.S \
@@ -104,7 +104,7 @@ EXTRA_libffi_la_SOURCES = src/aarch64/ffi.c src/aarch64/sysv.S \
 	src/x86/ffiw64.c src/x86/win64.S src/x86/ffi64.c \
 	src/x86/unix64.S src/x86/sysv_intel.S src/x86/win64_intel.S \
 	src/xtensa/ffi.c src/xtensa/sysv.S \
-	src/k1c/ffi.c src/k1c/sysv.S
+	src/kvx/ffi.c src/kvx/sysv.S
 
 TARGET_OBJ = @TARGET_OBJ@
 libffi_la_LIBADD = $(TARGET_OBJ)

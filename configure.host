@@ -134,8 +134,8 @@ case "${host}" in
 	SOURCES="ffi.c unix.S"
 	;;
 
-  k1-*-*)
-	TARGET=K1C; TARGETDIR=k1c
+  kvx-*-*)
+	TARGET=KVX; TARGETDIR=kvx
 	SOURCES="ffi.c sysv.S"
 	;;
 

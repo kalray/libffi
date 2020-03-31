@@ -19,12 +19,12 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
-#if defined(__k1c__)
+#if defined(__kvx__)
 #define LIBFFI_ASM
 #include <fficonfig.h>
 #include <ffi.h>
 #include <ffi_cfi.h>
-#include <k1c/asm.h>
+#include <kvx/asm.h>
 
 .text
 .global ffi_call_SYSV
@@ -73,7 +73,7 @@ ffi_call_SYSV:
 	ret
 	;;
 
-#endif /* __k1c__ */
+#endif /* __kvx__ */
 
 #if defined __ELF__ && defined __linux__
 	.section .note.GNU-stack,"",%progbits

@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------
    ffitarget.h - Copyright (c) 2020 Kalray
 
-   K1C Target configuration macros
+   KVX Target configuration macros
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the

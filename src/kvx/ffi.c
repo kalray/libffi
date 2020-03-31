@@ -19,7 +19,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
-#if defined(__k1c__)
+#if defined(__kvx__)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #define ALIGN(x, a) ALIGN_MASK(x, (typeof(x))(a) - 1)
 #define ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
-#define K1C_ABI_STACK_ALIGNMENT (8)
+#define KVX_ABI_STACK_ALIGNMENT (8)
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
 #ifdef FFI_DEBUG
@@ -82,7 +82,7 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
 
   for (i = 0; i < cif->nargs; i++) {
 
-    s = K1C_ABI_SLOT_SIZE;
+    s = KVX_ABI_SLOT_SIZE;
     switch((*arg)->type) {
       case FFI_TYPE_SINT8:
       case FFI_TYPE_UINT8:
@@ -103,18 +103,18 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
         char *value;
         unsigned int written_size = 0;
         DEBUG_PRINT("struct by value @%p\n", stack);
-        if ((*arg)->size > K1C_ABI_MAX_AGGREGATE_IN_REG_SIZE) {
+        if ((*arg)->size > KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE) {
           DEBUG_PRINT("big struct\n");
           *(uint64_t *) stack = (uintptr_t)current_arg_passed_by_value;
           value = current_arg_passed_by_value;
           current_arg_passed_by_value += (*arg)->size;
-          written_size = K1C_ABI_SLOT_SIZE;
+          written_size = KVX_ABI_SLOT_SIZE;
         } else {
           value = stack;
           written_size = (*arg)->size;
         }
         memcpy(value, *argv, (*arg)->size);
-        s = ALIGN(written_size, K1C_ABI_STACK_ALIGNMENT);
+        s = ALIGN(written_size, KVX_ABI_STACK_ALIGNMENT);
         break;
       }
       default:
@@ -153,14 +153,14 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
   for (i = 0, arg = cif->arg_types; i < cif->nargs; i++, arg++) {
     DEBUG_PRINT("argument %d, type %d, size %lu\n", i, (*arg)->type, (*arg)->size);
     if ((*arg)->type == FFI_TYPE_STRUCT) {
-      if ((*arg)->size <= K1C_ABI_MAX_AGGREGATE_IN_REG_SIZE) {
-        slot_fitting_args_size += ALIGN((*arg)->size, K1C_ABI_SLOT_SIZE);
+      if ((*arg)->size <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE) {
+        slot_fitting_args_size += ALIGN((*arg)->size, KVX_ABI_SLOT_SIZE);
       } else {
-        slot_fitting_args_size += K1C_ABI_SLOT_SIZE; /* aggregate passed by reference */
-        big_struct_size += ALIGN((*arg)->size, K1C_ABI_SLOT_SIZE);
+        slot_fitting_args_size += KVX_ABI_SLOT_SIZE; /* aggregate passed by reference */
+        big_struct_size += ALIGN((*arg)->size, KVX_ABI_SLOT_SIZE);
       }
-    } else if ((*arg)->size <= K1C_ABI_SLOT_SIZE) {
-      slot_fitting_args_size += K1C_ABI_SLOT_SIZE;
+    } else if ((*arg)->size <= KVX_ABI_SLOT_SIZE) {
+      slot_fitting_args_size += KVX_ABI_SLOT_SIZE;
     } else {
       abort(); /* should never happen? */
     }
@@ -183,7 +183,7 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
       DEBUG_PRINT("fn: %p\n", fn);
       DEBUG_PRINT("rsize: %u\n", cif->flags);
       local_rvalue = ffi_call_SYSV(total_size, slot_fitting_args_size, &ecif, rvalue, fn);
-      if (cif->flags <= K1C_ABI_MAX_AGGREGATE_IN_REG_SIZE)
+      if (cif->flags <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE)
         memcpy(rvalue, &local_rvalue, cif->flags);
       break;
     default:
@@ -203,4 +203,4 @@ ffi_prep_closure_loc (ffi_closure* closure,
   return FFI_BAD_ABI;
 }
 
-#endif /* (__k1c__) */
+#endif /* (__kvx__) */
