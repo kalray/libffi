@@ -30,7 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
 #define ALIGN(x, a) ALIGN_MASK(x, (typeof(x))(a) - 1)
 #define ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
-#define KVX_ABI_STACK_ALIGNMENT (8)
+#define KVX_ABI_STACK_ALIGNMENT (32)
+#define KVX_ABI_STACK_ARG_ALIGNMENT (8)
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
 #ifdef FFI_DEBUG
@@ -114,7 +115,7 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
           written_size = (*arg)->size;
         }
         memcpy(value, *argv, (*arg)->size);
-        s = ALIGN(written_size, KVX_ABI_STACK_ALIGNMENT);
+        s = ALIGN(written_size, KVX_ABI_STACK_ARG_ALIGNMENT);
         break;
       }
       default:
@@ -127,6 +128,9 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
     argv++;
     arg++;
   }
+#ifdef FFI_DEBUG
+  FFI_ASSERT(((intptr_t)(stacktemp + REG_ARGS_SIZE) & (KVX_ABI_STACK_ALIGNMENT-1)) == 0);
+#endif
   return stacktemp + REG_ARGS_SIZE;
 }
 
@@ -174,6 +178,7 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
   /* This implementation allocates anyway for all register based args */
   slot_fitting_args_size = max(slot_fitting_args_size, REG_ARGS_SIZE);
   total_size = slot_fitting_args_size + big_struct_size;
+  total_size = ALIGN(total_size, KVX_ABI_STACK_ALIGNMENT);
 
   switch (cif->abi) {
     case FFI_SYSV:
