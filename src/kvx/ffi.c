@@ -100,6 +100,15 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
         *(uint64_t *) stack = *(uint64_t *)(* argv);
         break;
 
+      case FFI_TYPE_COMPLEX:
+        if ((*arg)->size == 8)
+          *(_Complex float *) stack = *(_Complex float *)(* argv);
+        else if ((*arg)->size == 16) {
+          *(_Complex double *) stack = *(_Complex double *)(* argv);
+          s = 16;
+        } else
+          abort();
+        break;
       case FFI_TYPE_STRUCT: {
         char *value;
         unsigned int written_size = 0;
@@ -119,6 +128,7 @@ void *ffi_prep_args(char *stack, unsigned int arg_slots_size, extended_cif *ecif
         break;
       }
       default:
+        printf("Error: unsupported arg type %d\n", (*arg)->type);
         abort();
         break;
 
@@ -156,7 +166,7 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
   /* Calculate size to allocate on stack */
   for (i = 0, arg = cif->arg_types; i < cif->nargs; i++, arg++) {
     DEBUG_PRINT("argument %d, type %d, size %lu\n", i, (*arg)->type, (*arg)->size);
-    if ((*arg)->type == FFI_TYPE_STRUCT) {
+    if (((*arg)->type == FFI_TYPE_STRUCT) || ((*arg)->type == FFI_TYPE_COMPLEX)) {
       if ((*arg)->size <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE) {
         slot_fitting_args_size += ALIGN((*arg)->size, KVX_ABI_SLOT_SIZE);
       } else {
@@ -166,6 +176,7 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
     } else if ((*arg)->size <= KVX_ABI_SLOT_SIZE) {
       slot_fitting_args_size += KVX_ABI_SLOT_SIZE;
     } else {
+      printf("Error: unsupported arg size %ld arg type %d\n", (*arg)->size, (*arg)->type);
       abort(); /* should never happen? */
     }
   }
@@ -188,7 +199,7 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
       DEBUG_PRINT("fn: %p\n", fn);
       DEBUG_PRINT("rsize: %u\n", cif->flags);
       local_rvalue = ffi_call_SYSV(total_size, slot_fitting_args_size, &ecif, rvalue, fn);
-      if (cif->flags <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE)
+      if (cif->flags <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE && cif->rtype->type != FFI_TYPE_VOID)
         memcpy(rvalue, &local_rvalue, cif->flags);
       break;
     default:
