@@ -43,6 +43,20 @@ typedef enum ffi_abi {
   FFI_LAST_ABI,
   FFI_DEFAULT_ABI = FFI_SYSV
 } ffi_abi;
+
+/* Those values are set depending on return type
+ * they are used in the assembly code in sysv.S
+ */
+typedef enum kvx_intext_method {
+  KVX_RET_NONE = 0,
+  KVX_RET_SXBD = 1,
+  KVX_RET_SXHD = 2,
+  KVX_RET_SXWD = 3,
+  KVX_RET_ZXBD = 4,
+  KVX_RET_ZXHD = 5,
+  KVX_RET_ZXWD = 6
+} kvx_intext_method;
+
 #endif
 
 /* ---- Definitions for closures ----------------------------------------- */

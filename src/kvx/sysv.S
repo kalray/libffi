@@ -36,13 +36,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
   r0: total size to allocate on stack
   r1: size of arg slots
-  r2: extended cif structure
+  r2: extended cif structure, DO NOT REMOVE: it is used by ffi_prep_args()
   r3: return value address
   r4: function to call
+  r5: integer sign extension method to be used
 */
 ffi_call_SYSV:
-	addd $r12 = $r12, -32
+	addd $r12 = $r12, -64
 	so (-32)[$r12] = $r20r21r22r23
+	;;
+	sd (0)[$r12] = $r24
 	;;
 	get $r23 = $ra
 	copyd $r20 = $r12
@@ -51,6 +54,7 @@ ffi_call_SYSV:
 	copyd $r0 = $r12
 	copyd $r21 = $r3
 	copyd $r22 = $r4
+	copyd $r24 = $r5
 	call ffi_prep_args
 	;;
 	lo $r8r9r10r11 = (64)[$r12]
@@ -66,11 +70,53 @@ ffi_call_SYSV:
 	copyd $r15 = $r21
 	icall $r22
 	;;
+	pcrel $r4 = @pcrel(.Ltable)
+	cb.deqz $r24 ? .Lend
+	;;
+	addx8d $r24 = $r24, $r4
+	;;
+	igoto $r24
+	;;
+.Ltable:
+0: /* we should never arrive here */
+	goto .Lerror
+	nop
+	;;
+1: /* Sign extend byte to double */
+	sxbd $r0 = $r0
+	goto .Lend
+	;;
+2: /* Sign extend half to double */
+	sxhd $r0 = $r0
+	goto .Lend
+	;;
+3: /* Sign extend word to double */
+	sxwd $r0 = $r0
+	goto .Lend
+	;;
+4: /* Zero extend byte to double */
+	zxbd $r0 = $r0
+	goto .Lend
+	;;
+5: /* Zero extend half to double */
+	zxhd $r0 = $r0
+	goto .Lend
+	;;
+6: /* Zero extend word to double */
+	zxwd $r0 = $r0
+	/* Fallthrough to .Lend */
+	;;
+.Lend:
+	ld $r24 = (0)[$r12]
+	;;
 	set $ra = $r23
-	lo $r20r21r22r23 = (0)[$r20]
-	addd $r12 = $r20, 32
+	lo $r20r21r22r23 = (32)[$r20]
+	addd $r12 = $r20, 64
 	;;
 	ret
+	;;
+.Lerror:
+	errop
 	;;
 
 #endif /* __kvx__ */

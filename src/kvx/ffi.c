@@ -51,7 +51,8 @@ extern struct ret_value ffi_call_SYSV(unsigned total_size,
                                       unsigned size,
                                       extended_cif *ecif,
                                       unsigned *rvalue_addr,
-                                      void *fn);
+                                      void *fn,
+                                      unsigned int_ext_method);
 
 /* Perform machine dependent cif processing */
 ffi_status ffi_prep_cif_machdep(ffi_cif *cif)
@@ -153,14 +154,50 @@ ffi_status ffi_prep_cif_machdep_var(ffi_cif *cif, unsigned int nfixedargs,
   return FFI_OK;
 }
 
+static unsigned long handle_small_int_ext(kvx_intext_method *int_ext_method,
+                                          const ffi_type *rtype)
+{
+  switch (rtype->type) {
+    case FFI_TYPE_SINT8:
+      *int_ext_method = KVX_RET_SXBD;
+      return KVX_REGISTER_SIZE;
+
+    case FFI_TYPE_SINT16:
+      *int_ext_method = KVX_RET_SXHD;
+      return KVX_REGISTER_SIZE;
+
+    case FFI_TYPE_SINT32:
+      *int_ext_method = KVX_RET_SXWD;
+      return KVX_REGISTER_SIZE;
+
+    case FFI_TYPE_UINT8:
+      *int_ext_method = KVX_RET_ZXBD;
+      return KVX_REGISTER_SIZE;
+
+    case FFI_TYPE_UINT16:
+      *int_ext_method = KVX_RET_ZXHD;
+      return KVX_REGISTER_SIZE;
+
+    case FFI_TYPE_UINT32:
+      *int_ext_method = KVX_RET_ZXWD;
+      return KVX_REGISTER_SIZE;
+
+    default:
+      *int_ext_method = KVX_RET_NONE;
+      return rtype->size;
+  }
+}
+
 void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
 {
   int i;
   unsigned long int slot_fitting_args_size = 0;
   unsigned long int total_size = 0;
   unsigned long int big_struct_size = 0;
+  kvx_intext_method int_extension_method;
   ffi_type **arg;
-  struct ret_value local_rvalue;
+  struct ret_value local_rvalue = {0};
+  size_t wb_size;
 
 
   /* Calculate size to allocate on stack */
@@ -191,6 +228,16 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
   total_size = slot_fitting_args_size + big_struct_size;
   total_size = ALIGN(total_size, KVX_ABI_STACK_ALIGNMENT);
 
+  /* wb_size: write back size, the size we will need to write back to user
+   * provided buffer. In theory it should always be cif->flags which is
+   * cif->rtype->size. But libffi API mandates that for integral types
+   * of size <= system register size, then we *MUST* write back
+   * the size of system register size.
+   * in our case, if size <= 8 bytes we must write back 8 bytes.
+   * floats, complex and structs are not affected, only integrals.
+   */
+  wb_size = handle_small_int_ext(&int_extension_method, cif->rtype);
+
   switch (cif->abi) {
     case FFI_SYSV:
       DEBUG_PRINT("total_size: %lu\n", total_size);
@@ -198,9 +245,13 @@ void ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
       DEBUG_PRINT("rvalue: %p\n", rvalue);
       DEBUG_PRINT("fn: %p\n", fn);
       DEBUG_PRINT("rsize: %u\n", cif->flags);
-      local_rvalue = ffi_call_SYSV(total_size, slot_fitting_args_size, &ecif, rvalue, fn);
-      if (cif->flags <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE && cif->rtype->type != FFI_TYPE_VOID)
-        memcpy(rvalue, &local_rvalue, cif->flags);
+      DEBUG_PRINT("wb_size: %u\n", wb_size);
+      DEBUG_PRINT("int_extension_method: %u\n", int_extension_method);
+      local_rvalue = ffi_call_SYSV(total_size, slot_fitting_args_size,
+                                   &ecif, rvalue, fn, int_extension_method);
+      if ((cif->flags <= KVX_ABI_MAX_AGGREGATE_IN_REG_SIZE)
+          && (cif->rtype->type != FFI_TYPE_VOID))
+        memcpy(rvalue, &local_rvalue, wb_size);
       break;
     default:
       abort();
